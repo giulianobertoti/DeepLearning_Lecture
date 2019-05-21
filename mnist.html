@@ -1,0 +1,156 @@
+<html>
+
+<head>
+  <!-- Load TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.12.0"> </script>
+
+  <style>
+
+  #prediction, #canvas-container{
+    float:left;
+    border: 1px solid black;
+    margin: 0 10px 10px;
+  }
+  #prediction {
+    width: 100px;
+    height: 100px;
+  }
+  #prediction p{
+    font-weight: bold;
+    font-size: 87px;
+    text-align: center;
+    margin: 0;
+  }
+  #controls {
+    clear: both;
+  }
+
+  </style>
+</head>
+
+<body>
+  <p>Draw a number in this box</p>
+  <div id="canvas-container">
+  </div>
+  <div id="prediction">
+  </div>
+
+  <div id="controls">
+      <button id="clear" >Clear</button>
+      <button id="predict" >Tell me the number</button>
+  </div>
+
+
+
+
+  <script>
+    (function () {
+      // Creates a new canvas element and appends it as a child
+      // to the parent element, and returns the reference to
+      // the newly created canvas element
+      var model;
+      async function loadModel() {
+        model = await tf.loadModel('https://s3-ap-southeast-2.amazonaws.com/mystaticdemo/model.json');
+      }
+
+      function createCanvas(parent, width, height) {
+        var canvas = {};
+        canvas.node = document.createElement('canvas');
+        canvas.node.setAttribute('id', 'canvas');
+        canvas.context = canvas.node.getContext('2d');
+        canvas.node.width = width || 100;
+        canvas.node.height = height || 100;
+        parent.appendChild(canvas.node);
+        return canvas;
+      }
+
+      async function init(container, width, height, fillColor) {
+        var canvas = createCanvas(container, width, height);
+        var ctx = canvas.context;
+        //define a custom fillCircle method
+        ctx.fillCircle = function (x, y, radius, fillColor) {
+          this.fillStyle = fillColor;
+          this.beginPath();
+          this.moveTo(x, y);
+          this.arc(x, y, radius, 0, Math.PI * 2, false);
+          this.fill();
+        };
+        ctx.clearTo = function (fillColor) {
+          ctx.fillStyle = fillColor;
+          ctx.fillRect(0, 0, width, height);
+        };
+        ctx.clearTo(fillColor || "#ffffff");
+
+        // bind mouse events
+        canvas.node.onmousemove = function (e) {
+          if (!canvas.isDrawing) {
+            return;
+          }
+          var x = e.pageX - this.offsetLeft;
+          var y = e.pageY - this.offsetTop;
+          var radius = 3; // or whatever
+          var fillColor = '#000000';
+          ctx.fillCircle(x, y, radius, fillColor);
+        };
+        canvas.node.onmousedown = function (e) {
+          canvas.isDrawing = true;
+        };
+        canvas.node.onmouseup = function (e) {
+          canvas.isDrawing = false;
+        };
+        loadModel();
+      }
+
+      function predict(tfImage) {
+        var output = model.predict(tfImage);
+        var result = Array.from(output.dataSync());
+        console.log('Output is : ', Array.from(output.dataSync())); 
+        var maxPossibility = result.reduce(function(a,b){return Math.max(a,b)});
+        console.log(maxPossibility);
+        document.getElementById('prediction').innerHTML =  '<p>'
+          + result.indexOf(maxPossibility) + '</p>'; 
+      }
+      function clear() {
+        console.log('clear canvas');
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+        ctx.clearTo('#ffffff');
+        document.getElementById('prediction').innerHTML = '';
+      }
+      function recogniseNumber() {
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+
+        // console.log(ctx.getImageData(0,0, 100, 100));
+        var imageData = ctx.getImageData(0, 0, 100, 100);
+        var tfImage = tf.fromPixels(imageData, 1);
+
+        //Resize to 28X28
+        var tfResizedImage = tf.image.resizeBilinear(tfImage, [28,28]);
+        //Since white is 255 black is 0 so need to revert the values 
+        //so that white is 0 and black is 255 
+        tfResizedImage = tf.cast(tfResizedImage, 'float32');
+        tfResizedImage = tf.abs(tfResizedImage.sub(tf.scalar(255)))
+          .div(tf.scalar(255)).flatten();
+        tfResizedImage = tfResizedImage.reshape([1, 784]);
+
+        //Make another dimention as the model expects 
+        console.log(tfResizedImage.dataSync());
+        console.log(tfResizedImage.toString()) ;
+        predict(tfResizedImage);
+      }      
+
+      var container = document.getElementById('canvas-container');
+      init(container, 100, 100, '#ffffff');
+      document.getElementById('clear').addEventListener('click', clear);
+      document.getElementById('predict').addEventListener('click', recogniseNumber);
+
+
+    })();
+
+
+    
+  </script>
+</body>
+
+</html>
