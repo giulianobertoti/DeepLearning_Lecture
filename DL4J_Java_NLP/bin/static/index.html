@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+<body>
+
+
+<div class="wrap">
+   <div class="search">
+      <input id="text-search" type="text" class="searchTerm" placeholder="ooi">
+     
+   </div>
+   <div class="words">
+   </div>
+</div>
+<script>
+$(document).ready(function() {
+	$("#text-search").keydown(function(e) {
+		$(".words").empty();
+		if(e.which == 32) {
+			var text = $(this).val();
+			console.log(text);
+			var url = "/"+text; 
+			$.getJSON(url,function(data){
+				var itens = [];
+				$.each(data, function(i){
+					itens.push("<div>"+this+"</div>");
+				});
+				$(".words").append(itens);
+			});
+			
+		}
+	});
+});
+</script>
+
+</body>
+</html>

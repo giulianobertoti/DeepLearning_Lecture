@@ -1,0 +1,37 @@
+repositories {
+    mavenCentral()
+}
+
+apply plugin: 'java'
+//apply plugin: 'jetty'
+apply plugin: 'application'
+
+mainClassName = 'hello.MainServer'
+applicationName = 'app'
+
+defaultTasks = ['clean', 'jar']
+
+dependencies {
+	compile 'com.sparkjava:spark-core:2.3'
+	compile 'com.google.code.gson:gson:1.7.2'
+	// https://mvnrepository.com/artifact/org.deeplearning4j/deeplearning4j-ui-model
+	compile group: 'org.deeplearning4j', name: 'deeplearning4j-ui-model', version: '0.7.1'
+	// https://mvnrepository.com/artifact/org.deeplearning4j/deeplearning4j-nlp
+	compile group: 'org.deeplearning4j', name: 'deeplearning4j-nlp', version: '0.7.1'
+	// https://mvnrepository.com/artifact/org.nd4j/nd4j-native-platform
+	testCompile group: 'org.nd4j', name: 'nd4j-native-platform', version: '0.7.1'
+    testCompile group: 'junit', name: 'junit', version: '4.+'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'hello.MainServer'
+    }
+	from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } } {
+        // remove all signature files
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+    }
+}
+task stage(dependsOn: ['clean', 'installApp'])
